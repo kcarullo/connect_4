@@ -17,6 +17,8 @@ PLAYER_PIECE = 1
 AI_PIECE = 2
 WINDOW_LENGTH = 4
 EMPTY = 0
+
+
 #create matrix connect 4 board is 6 rows by 7 columns
 def create_board():
     board = np.zeros((ROW_COUNT,COLUMN_COUNT))
@@ -61,17 +63,58 @@ def winning_move(board, piece):
             if board[r][c] == piece and board[r-1][c+1] == piece and board[r-2][c+2] == piece and board[r-3][c+3] == piece:
                 return True
 
+def evaluate_window(window, piece):
+    opp_piece = PLAYER_PIECE
+    if piece == PLAYER_PIECE:
+        opp_piece = AI_PIECE
+    
+    if window.count(piece) == 4:
+        score += 100
+    elif window.count(piece) == 3 and window.count(EMPTY) == 1:
+        score += 10
+    elif window.count(piece) == 2 and window.count(EMPTY) == 2:
+        score == 5
+    
+    if window.count(opp_piece) == 3 and window.count(EMPTY) == 1:
+        score -= 80
+    return 
+
+
 def score_position(board, piece):
     # Score Horizontal
     for r in range(ROW_COUNT):
         row_array = [int(i) for i in list(board[r,:])]
         for c in range(COLUMN_COUNT-3):
             window = row_array[c:c+WINDOW_LENGTH]
+            score += evaluate_window(window, piece)
+    # Score Vertical            
+    for c in range(COLUMN_COUNT):
+        col_array = [int(i) for i in list(board[:,c])]
+        for r in range(ROW_COUNT-3):
+            window = col_array[r:r+WINDOW_LENGTH]
+            score += evaluate_window(window, piece)
+    for r in range(ROW_COUNT-3):
+        for c in range(COLUMN_COUNT-3):
+            window = [board[r+i][c+i] for i in range(WINDOW_LENGTH)]
+            score += evaluate_window(window, piece)
+    for r in range(ROW_COUNT-3):
+        for c in range(COLUMN_COUNT-3):
+            window = [board[r+3-i][c+i] for i in range(WINDOW_LENGTH)]
+            score += evaluate_window(window, piece)
+    return score 
+
+    # Score Positive sloped diagonial
+    for r in range(ROW_COUNT-3):
+        for c in range(COLUMN_COUNT-3):
+            window = [board[r+i][c+i] for i in range(WINDOW_LENGTH)]
             if window.count(piece) == 4:
                 score += 100
             elif window.count(piece) == 3 and window.count(EMPTY) == 1:
                 score += 10
-    return score 
+    for r in range(ROW_COUNT-3):
+        for c in range(COLUMN_COUNT-3):
+            window = [board[r+3-i][c+i] for i in range(WINDOW_LENGTH)]
+            
 
 def get_valid_locations(board):
     valid_locations = []
@@ -81,10 +124,18 @@ def get_valid_locations(board):
     return  valid_locations
 
 def pick_best_move(board, piece):
+    best_score = 1000
     valid_locations = get_valid_locations(board)
+    best_col = random.choice(valid_locations)
     for col in valid_locations:
         row = get_next_open_row(board, col)
-
+        temp_board = board.copy()
+        drop_piece(temp_board, row, col, piece)
+        score = score_position(temp_board, piece)
+        if score > best_score:
+            best_score = score
+            best_col = col
+            
 def draw_board(board):
     for c in range(COLUMN_COUNT):
         for r in range(ROW_COUNT):
@@ -162,8 +213,8 @@ while not game_over:
     #Ask for player 2 input
     if turn == AI and not game_over:
         
-        col = random.randint(0, COLUMN_COUNT-1)
-        
+        #col = random.randint(0, COLUMN_COUNT-1)
+        col = pick_best_move(board, AI_PIECE)
         if is_valid_location(board, col):
             pygame.time.wait(500)
             row = get_next_open_row(board, col)
